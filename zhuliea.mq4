@@ -98,20 +98,44 @@ int start()
          //ignored = (MathAbs(mazl) < N3 || MathAbs(distance) < 1.5*N3);
          ////ignored = MathAbs(distance) < N3;
          distance = MathAbs(golden);
+
          if ((golden <= -MaxDistance) && ((golden - LastDead) <= -MaxDistance))
+         {
+            Print("Buy Valid 1: ", golden, ", ", LastDead);
             valid = true;
+         }
          else
          if ((LastCrossType == DeadCross) && ((golden - LastDead) <= -MaxDistance) && (MathAbs(golden) > IgnoreDistance))
+         {
+            Print("Buy Valid 2: ", golden, ", ", LastDead);
             valid = true;
+         }
          else
-         if ((LastCrossType == DeadCross) && (golden < -MinDistance) && (MathAbs(golden - LastDead) < IgnoreDistance))
+         if ((LastCrossType == DeadCross) && (golden > MinDistance) && (MathAbs(golden - LastDead) < IgnoreDistance))
+         {
+            Print("Buy Valid 3: ", golden, ", ", LastDead);
             valid = true;
+         }
          else
          if ((LastCrossType == DeadCross) && (LastValidDead > MinDistance) && (golden - LastValidDead > 0))
+         {
+            Print("Buy Valid 4: ", golden, ", ", LastValidDead);
             valid = true;
+         }
          else
-         if ((LastValidCrossBar != 0) && ((golden - LastDead) < -MinDistance) && (MathAbs(Bars - LastOpenBars) < N1))
+         if ((LastValidCrossBar != 0) && ((golden - LastDead) < -MaxDistance) && (MathAbs(Bars - LastOpenBars) < N2))
+         {
+            Print("Buy Valid 5: ", golden, ", ", LastDead, ", ", LastOpenBars, ", ", Bars);
             valid = true;
+         }
+         else
+         if (((LastCrossType == CrossNone) || (LastCrossType == ClosePosition)) && (golden <= -MaxDistance))
+         {
+            Print("Buy Valid 6: ", golden);
+            valid = true;
+         }
+         else
+            Print("Buy Invalid: ", golden, ", ", LastDead, ", ", LastValidDead, ", ", LastOpenBars, ", ", Bars);
             
          ignored = !valid;
          
@@ -132,30 +156,43 @@ int start()
          ////ignored = MathAbs(distance) < N3;
          distance = MathAbs(dead);
          if ((dead >= MaxDistance) && ((dead - LastGolden) >= MaxDistance))
-            valid = true;
-         else
-         if ((LastCrossType == GoldenCross) && ((dead - LastGolden) > MaxDistance) && (MathAbs(dead) > IgnoreDistance))
          {
-            Print("DeadValid");
+            Print("Sell Valid1: ", dead, ", ", LastGolden);
             valid = true;
          }
          else
-         if ((LastCrossType == GoldenCross) && (dead > MinDistance) && (MathAbs(dead - LastGolden) < IgnoreDistance))
+         if ((LastCrossType == GoldenCross) && ((dead - LastGolden) > MaxDistance) && (MathAbs(dead) > IgnoreDistance))
          {
-            Print("DeadValid0");
+            Print("Sell Valid2: ", dead, ", ", LastGolden);
+            valid = true;
+         }
+         else
+         if ((LastCrossType == GoldenCross) && (dead < -MinDistance) && (MathAbs(dead - LastGolden) < IgnoreDistance))
+         {
+            Print("Sell Valid3: ", dead, ", ", LastGolden);
             valid = true;
          }
          else
          if ((LastCrossType == GoldenCross) && (LastValidGolden < -MinDistance) && (dead - LastValidGolden < 0))
          {
-            Print("DeadValid1: LastValidGold( ", LastValidGolden, ")", "[", dead - LastValidGolden, "]");
+            Print("Sell Valid4: ", dead, ", ", LastValidGolden);
             valid = true;
          }
          else
-         if ((LastValidCrossBar != 0) && ((dead - LastGolden) > MinDistance) && (MathAbs(Bars - LastOpenBars) < N1))
+         if ((LastValidCrossBar != 0) && ((dead - LastGolden) > MaxDistance) && (MathAbs(Bars - LastOpenBars) < N2))
          {
-            Print("DeadValid2:", Bars, "-", LastOpenBars);
+            Print("Sell Valid5: ", dead, ", ", LastGolden, ", ", LastOpenBars, ", ", Bars);
             valid = true;
+         }
+         else
+         if (((LastCrossType == CrossNone) || (LastCrossType == ClosePosition)) && (dead >= MaxDistance))
+         {
+            Print("Buy Valid 6: ", dead);
+            valid = true;
+         }
+         else
+         {
+            Print("Sell Invalid: ", dead, ", ", LastGolden, ", ", LastValidGolden, ", ", LastOpenBars, ", ", Bars);
          }
             
          ignored = !valid;
@@ -171,8 +208,11 @@ int start()
       
       if (ignored)
       {
-         if (LastDistance[1] != EMPTY_VALUE && MathAbs(LastDistance[0]) < IgnoreDistance && MathAbs(LastDistance[1]) < IgnoreDistance)
+         if (LastDistance[1] != EMPTY_VALUE && MathAbs(distance) <IgnoreDistance && MathAbs(LastDistance[0]) < IgnoreDistance && MathAbs(LastDistance[1]) < IgnoreDistance)
+         {
+            Print("Close Valide: ", distance, ", ",  LastDistance[0], ", ", LastDistance[1]);
             closeMe = true;
+         }
          if (closeMe)
          {
             LastDead = 0;
