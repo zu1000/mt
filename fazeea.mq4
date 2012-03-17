@@ -8,15 +8,15 @@
 
 #define MAGIC 20120224
 
-#define CrossNone 0
-#define GoldenCross 1
-#define DeadCross 2
-#define ClosePosition 3
-
 extern int N1 = 20;
 extern int N2 = 10;
 
 int last_counted_bars = 0;
+
+int last_signal_num = EMPTY_VALUE;
+int last_signal_bar = EMPTY_VALUE;
+
+double stop_loss_price = EMPTY_VALUE;
 
 //+------------------------------------------------------------------+
 //| expert initialization function                                   |  
@@ -45,25 +45,138 @@ int start()
     //----
     if (Bars < 100 || !IsTradeAllowed()) return (0);
 
-    if (last_counted_bars == Bars)
-        return (0);
-    else
-        last_counted_bars = Bars;
+    // Check if we need to calculate the signal
+    checkSignal();
 
-    double SigBuy  = iCustom(0, 0, "faze", N1, N2, 1, 1);
-    double SigSell = iCustom(0, 0, "faze", N1, N2, 2, 1);
-    double SigStopBuyLoss = iCustom(0, 0, "faze", N1, N2, 3, 1);
-    double SigStopBuyProfit = iCustom(0, 0, "faze", N1, N2, 4, 1);
-    double SigStopSellLoss = iCustom(0, 0, "faze", N1, N2, 5, 1);
-    double SigStopSellProfit = iCustomer(0, 0, "faze", N1, N2, 6, 1);
+    // Check if we need to open position
+    if (canOpenBuyPosition())
+    {
+        openPosition(true);
+        return (0);
+    }
+
+    if (canOpenSellPosition())
+    {
+        openPosition(false);
+        return (0);
+    }
+
+    // Check if we need to close position
+    if (canClosePosition())
+    {
+        closePosition();
+        return (0);
+    }
 
     //----
     return(0);
 }
 
 //+------------------------------------------------------------------+
-//| golden cross function                                 |
+//| check if we already have a buy/sell position                     |
 //+------------------------------------------------------------------+
+bool hasPosition(bool buy)
+{
+    for(int i = 0; i < OrdersTotal(); i++)
+    {
+        if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==false) break;
+
+        if(OrderSymbol()==Symbol() && OrderMagicNumber()==MAGIC)
+        {
+            if (buy && OrderType() == OP_BUY)
+                return (true);
+
+            if (!buy && OrderType() == OP_SELL)
+                return (true);
+        }
+    }
+
+    return (false);
+}
+
+//+------------------------------------------------------------------+
+//| Check if we should open a buy position                          |
+//+------------------------------------------------------------------+
+bool canOpenBuyPosition()
+{
+    // If we already have a buy position, don't open new one
+    if (hasPosition(true))
+        return (false);
+
+    // we have a potential buy position
+    if ((last_signal_num == 2) &&
+        (distance() == 2) &&
+        (isPositive() || Close[1] > Close[2]))
+    {
+        return (true);
+    }
+
+    // we have another potential buy position
+    if ((last_signal_num == 3) &&
+        (distance() == 2) &&
+        (isPositive() || Close[1] > Close[2]))
+    {
+        return (true);
+    }
+
+    return (false);
+}
+
+//+------------------------------------------------------------------+
+//| Check if we should open a sell position                          |
+//+------------------------------------------------------------------+
+bool canOpenSellPosition()
+{
+    // If we already have a sell position, don't open new one
+    if (hasPosition(false))
+        return (false);
+
+    // we have a potential buy position
+    if ((last_signal_num == 2) &&
+        (distance() == 2) &&
+        (!isPositive() || Close[1] < Close[2]))
+    {
+        return (true);
+    }
+
+    // we have another potential buy position
+    if ((last_signal_num == 3) &&
+        (distance() == 2) &&
+        (!isPositive() || Close[1] < Close[2]))
+    {
+        return (true);
+    }
+}
+
+bool canClosePosition()
+{
+    if (hasPosition(true))
+    {
+        if ((stop_loss_price != EMPTY_VALUE) &&
+            (Close[0] <= stop_loss_price))
+            return (true);
+
+        if ((last_signal_num == 4 || last_signal_num == 5) &&
+            distance() == 2 &&
+            (Close[1] < Close[2] || !isPositive()))
+            return (true);
+    }
+    else
+    if (hasPosition(false))
+    {
+        if ((stop_loss_price != EMPTY_VALUE) &&
+            (Close[0] >= stop_loss_price))
+            return (true);
+
+        if ((last_signal_num == 6 || last_signal_num == 7) &&
+            distance() == 2 &&
+            (Close[1] > Close[2] || isPositive()))
+            return (true);
+    }
+
+    return (false);
+}
+
 void closePosition()
 {
     for(int i = 0; i < OrdersTotal(); i++)
@@ -78,106 +191,128 @@ void closePosition()
                 {
                     Print("Close Sell Order ", OrderTicket(), " failed (", GetLastError(), ")");
                 }
-                else
-                    AskQty = AskQty - OrderLots();
             }
             else
-                if (OrderType() == OP_BUY)
-                {
-                    if (!OrderClose(OrderTicket(),OrderLots(),Bid, 5, Gray))
-                    {
-                        Print("Close Buy Order ", OrderTicket(), " failed (", GetLastError(), ")");
-                    }
-                    else
-                        BidQty = BidQty - OrderLots();
-                }
-        }
-    }
-}  
-
-//+------------------------------------------------------------------+
-//| golden cross function                                 |
-//+------------------------------------------------------------------+
-void goldenCrossed()
-{
-    for(int i = 0; i < OrdersTotal(); i++)
-    {
-        if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==false) break;
-        if(OrderSymbol()==Symbol() && OrderMagicNumber()==MAGIC)
-        {
-            // Close sell orders, since we should buy now
-            if (OrderType() == OP_SELL)
-            {
-                if (!OrderClose(OrderTicket(),OrderLots(),Ask, 5, Green))
-                {
-                    Print("Close Sell Order ", OrderTicket(), " failed (", GetLastError(), ")");
-                }
-                else
-                    AskQty = AskQty - OrderLots();
-            }
-        }
-    }
-
-    //Print(LastOpenBars, ":", Bars);
-
-    //if (LastOpenBars == Bars)
-    //   return;
-
-    //LastOpenBars = Bars;
-    //Print("LastOpenBars:", LastOpenBars);
-
-    if (BidQty > 0)
-        return;
-
-    if (OrderSend(Symbol(), OP_BUY, 1, Ask, 5, 0.0, 0.0, NULL, MAGIC) < 0)
-    {
-        Print("Open Buy failed(", GetLastError(), ")");
-    }
-    else
-        BidQty = 1;
-}
-
-//+------------------------------------------------------------------+
-//| dead cross function                                 |
-//+------------------------------------------------------------------+
-void deadCrossed()
-{
-    for(int i = 0; i < OrdersTotal(); i++)
-    {
-        if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==false) break;
-        if(OrderSymbol()==Symbol() && OrderMagicNumber()==MAGIC)
-        {
-            // Close sell orders, since we should buy now
             if (OrderType() == OP_BUY)
             {
-                if (!OrderClose(OrderTicket(),OrderLots(),Bid, 5, Green))
+                if (!OrderClose(OrderTicket(),OrderLots(),Bid, 5, Gray))
                 {
                     Print("Close Buy Order ", OrderTicket(), " failed (", GetLastError(), ")");
                 }
-                else
-                    BidQty = BidQty - OrderLots();
             }
         }
     }
 
-    //Print(LastOpenBars, ":", Bars);
+    last_signal_num = EMPTY_VALUE;
+    last_signal_bar = EMPTY_VALUE;
+    stop_loss_price = EMPTY_VALUE;
 
-    //if (LastOpenBars == Bars)
-    //{
-    //   return;
-    //}
-    //LastOpenBars = Bars;
-    //Print("LastOpenBars:", LastOpenBars);
+}
 
-    if (AskQty > 0)
-        return;
+void openPosition(bool buy)
+{
+    // First of all, close the position
+    closePosition();
 
-    if (OrderSend(Symbol(), OP_SELL, 1, Bid, 5, 0.0, 0.0, NULL, MAGIC) < 0)
+    if (buy)
     {
-        Print("Open Sell failed(", GetLastError(), ")");
+        if( OrderSend(Symbol(), OP_BUY, 1, Ask, 5, 0.0, 0.0, NULL, MAGIC) < 0)
+        {
+            Print("Open Buy failed(", GetLastError(), ")");
+        }
+        else
+        {
+            stop_loss_price = MathMin(Close[1], Close[2]) - 5*Point;
+        }
     }
     else
-        AskQty = 1;
+    {
+        if (OrderSend(Symbol(), OP_SELL, 1, Bid, 5, 0.0, 0.0, NULL, MAGIC) < 0)
+        {
+            Print("Open Sell failed(", GetLastError(), ")");
+        }
+        else
+        {
+            stop_loss_price = MathMax(Close[1], Close[2]) + 5*Point;
+        }
+    }
+}
+
+//+------------------------------------------------------------------+
+//| calculate distance to last signaled bar                          |
+//+------------------------------------------------------------------+
+int distance()
+{
+    return (Bars - last_signal_bar);
+}
+
+//+------------------------------------------------------------------+
+//| Check if the last bar positiv                                    |
+//+------------------------------------------------------------------+
+bool isPositive()
+{
+    return (Close[1] >= Open[1]);
+}
+
+//+------------------------------------------------------------------+
+//| Check signals                                                    |
+//+------------------------------------------------------------------+
+void checkSignal()
+{
+    // Signal should be checked only once, when this is a new bar
+    if (last_counted_bars == Bars)
+        return (0);
+    else
+        last_counted_bars = Bars;
+
+    //Point 2
+    double SigBuy  = iCustom(0, 0, "faze", N1, N2, 1, 1);
+    //Point 3
+    double SigSell = iCustom(0, 0, "faze", N1, N2, 2, 1);
+    //Point 4
+    double SigStopBuyLoss = iCustom(0, 0, "faze", N1, N2, 3, 1);
+    //Point 5
+    double SigStopBuyProfit = iCustom(0, 0, "faze", N1, N2, 4, 1);
+    //Point 6
+    double SigStopSellLoss = iCustom(0, 0, "faze", N1, N2, 5, 1);
+    //Point 7
+    double SigStopSellProfit = iCustom(0, 0, "faze", N1, N2, 6, 1);
+
+    if (SigBuy != EMPTY_VALUE)
+    {
+        last_signal_num = 2;
+        last_signal_bar = Bars;
+    }
+    else
+    if (SigSell != EMPTY_VALUE)
+    {
+        last_signal_num = 3;
+        last_signal_bar = Bars;
+    }
+    else
+    if (SigStopBuyLoss != EMPTY_VALUE)
+    {
+        last_signal_num = 4;
+        last_signal_bar = Bars;
+    }
+    else
+    if (SigStopBuyProfit != EMPTY_VALUE)
+    {
+        last_signal_num = 5;
+        last_signal_bar = Bars;
+    }
+    else
+    if (SigStopSellLoss != EMPTY_VALUE)
+    {
+        last_signal_num = 6;
+        last_signal_bar = Bars;
+    }
+    else
+    if (SigStopSellProfit != EMPTY_VALUE)
+    {
+        last_signal_num = 7;
+        last_signal_bar = Bars;
+    }
 }
 
 //+------------------------------------------------------------------+
