@@ -129,7 +129,7 @@ int start()
 
     // it is aready calculated... don't do anything
     if (last_counted_bars == Bars)
-        return 0;
+        return (0);
     else
         last_counted_bars = Bars;
 
@@ -147,8 +147,9 @@ int start()
         //myclose[j] = Close[j];
     }
 
+    Print(limit);
     //----
-    for (int i = limit-1; i >0; i--)
+    for (int i = limit; i >0; i--)
     {
 
         bool signaled = false;

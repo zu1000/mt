@@ -266,17 +266,19 @@ void checkSignal()
         last_counted_bars = Bars;
 
     //Point 2
-    double SigBuy  = iCustom(0, 0, "faze", N1, N2, 1, 1);
+    double SigBuy  = iCustom(0, 0, "faze", N1, N2, 0, 1);
     //Point 3
-    double SigSell = iCustom(0, 0, "faze", N1, N2, 2, 1);
+    double SigSell = iCustom(0, 0, "faze", N1, N2, 1, 1);
     //Point 4
-    double SigStopBuyLoss = iCustom(0, 0, "faze", N1, N2, 3, 1);
+    double SigStopBuyLoss = iCustom(0, 0, "faze", N1, N2, 2, 1);
     //Point 5
-    double SigStopBuyProfit = iCustom(0, 0, "faze", N1, N2, 4, 1);
+    double SigStopBuyProfit = iCustom(0, 0, "faze", N1, N2, 3, 1);
     //Point 6
-    double SigStopSellLoss = iCustom(0, 0, "faze", N1, N2, 5, 1);
+    double SigStopSellLoss = iCustom(0, 0, "faze", N1, N2, 4, 1);
     //Point 7
-    double SigStopSellProfit = iCustom(0, 0, "faze", N1, N2, 6, 1);
+    double SigStopSellProfit = iCustom(0, 0, "faze", N1, N2, 5, 1);
+    
+    Print("[", last_counted_bars, "]: ", SigBuy, ",", SigSell, ",", SigStopBuyLoss, ",", SigStopBuyProfit, ",", SigStopSellLoss, ",", SigStopSellProfit); 
 
     if (SigBuy != EMPTY_VALUE)
     {
