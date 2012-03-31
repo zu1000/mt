@@ -118,6 +118,12 @@ bool canOpenBuyPosition()
     {
         return (true);
     }
+    
+    // one more potential buy position
+    if (last_signal_num == 2 && hasPosition(false))
+    {
+        return (true);
+    }
 
     return (false);
 }
@@ -146,6 +152,13 @@ bool canOpenSellPosition()
     {
         return (true);
     }
+    
+    // one more potential buy position
+    if (last_signal_num == 3 && hasPosition(true))
+    {
+        return (true);
+    }
+
 }
 
 bool canClosePosition()
